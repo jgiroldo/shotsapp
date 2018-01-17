@@ -1,30 +1,59 @@
 import { BrowserModule } from '@angular/platform-browser';
-import { NgModule } from '@angular/core';
+import { NgModule, APP_INITIALIZER } from '@angular/core';
 import { HttpClientModule } from '@angular/common/http';
 import { AppRoutes } from './app.routes';
-import { OAuthModule } from 'angular-oauth2-oidc';
 import { RouterModule } from '@angular/router';
 
 import { AppComponent } from './app.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
 import { ShotDetailsComponent } from './shot-details/shot-details.component';
 import { ShotService } from './shot.service';
-import { OAuthService } from 'angular-oauth2-oidc';
+import { LoginCallbackComponent } from './login-callback/login-callback.component';
+import { LoginCallbackService } from './login-callback/login-callback.service';
+import { CookieService } from 'ngx-cookie-service';
 
 @NgModule({
   declarations: [
     AppComponent,
     DashboardComponent,
-    ShotDetailsComponent
+    ShotDetailsComponent,
+    LoginCallbackComponent
   ],
   imports: [
     BrowserModule,
     HttpClientModule,
     RouterModule,
-    AppRoutes,
-    OAuthModule.forRoot()
+    AppRoutes
   ],
-  providers: [OAuthService, ShotService],
+  providers: [
+    ShotService,
+    CookieService,
+    LoginCallbackService,
+    // {
+    //   provide: APP_INITIALIZER,
+    //   useFactory: receiveToken,
+    //   multi: true,
+    //   deps: [LoginCallbackService, CookieService],
+    // }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
+
+export function receiveToken(loginSvc: LoginCallbackService, cookieService: CookieService): () => Promise<any> {
+  return (): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      if (!cookieService.check('authCode')) {
+        reject();
+        loginSvc.getAuthCode();
+        return;
+      }
+      if (!cookieService.check('authToken')) {
+        reject();
+        loginSvc.login();
+        return;
+      }
+      resolve();
+    });
+  };
+}
